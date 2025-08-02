@@ -2,3 +2,6 @@ streamlit
 gTTS
 moviepy
 Pillow
+imageio
+numpy
+pydub
