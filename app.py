@@ -14,9 +14,7 @@ def generate_dummy_visuals(output_path, aspect_ratio): size = (720, 1280) if asp
 
 def overlay_text_on_video(image_path, audio_path, script_text, output_path, aspect_ratio, add_music): image_clip = ImageClip(image_path).set_duration(30) audio_clip = AudioFileClip(audio_path)
 
-if add_music:
-    music = AudioFileClip("music_sample.mp3").volumex(0.2)
-    final_audio = CompositeAudioClip([audio_clip.volumex(1.0), music.set_duration(audio_clip.duration)])
+final_audio = audio_clip
 else:
     final_audio = audio_clip
 
