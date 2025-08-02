@@ -31,10 +31,18 @@ def generate_dummy_visuals(output_path, aspect_ratio):
 def overlay_text_on_video(image_path, audio_path, script_text, output_path, aspect_ratio):
     image_clip = ImageClip(image_path).set_duration(30)
     audio_clip = AudioFileClip(audio_path)
-    final_audio = audio_clip
+
+    # 🎵 Background music
+    music_clip = AudioFileClip("calm_music.mp3").volumex(0.2)
+    final_audio = CompositeAudioClip([
+        audio_clip.volumex(1.0),
+        music_clip.set_duration(audio_clip.duration)
+    ])
+
     image_clip = image_clip.set_audio(final_audio)
 
-    txt_clip = TextClip(script_text, fontsize=40, color='white', method='caption', size=image_clip.size, align='center')
+    txt_clip = TextClip(script_text, fontsize=40, color='white', method='caption',
+                        size=image_clip.size, align='center')
     txt_clip = txt_clip.set_duration(30).set_position('center')
 
     final = CompositeVideoClip([image_clip, txt_clip])
