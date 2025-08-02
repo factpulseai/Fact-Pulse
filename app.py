@@ -1,37 +1,66 @@
-
 import streamlit as st
 from gtts import gTTS
-from moviepy.editor import *
-import os
+from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip
+from PIL import Image, ImageDraw, ImageFont
 import tempfile
+import os
+import uuid
 
-st.set_page_config(page_title="Fact Pulse AI", layout="centered")
-st.title("🎥 Fact Pulse AI - Auto Video Generator")
+st.set_page_config(layout="centered", page_title="Fact Pulse AI Video Generator")
 
-script = st.text_area("Enter your video script:", height=200)
+st.title("🎬 Fact Pulse AI Video Generator")
+st.write("Generate an AI video with voiceover, captions, and visuals — fully automated.")
 
-aspect_ratio = st.selectbox("Choose Aspect Ratio", ["16:9", "9:16", "1:1"])
+# User Inputs
+script = st.text_area("✍️ Enter your video script:", "Did you know the Eiffel Tower can grow taller in summer?")
+prompt = st.text_input("🖼️ Describe the scene:", "Cinematic view of the Eiffel Tower at sunset with clouds")
+aspect_ratio = st.selectbox("📱 Select Aspect Ratio", ["16:9", "9:16"])
 
-if st.button("Generate Video"):
-    if script.strip() == "":
-        st.warning("Please enter a script first.")
-    else:
-        st.info("Generating voiceover...")
-        tts = gTTS(text=script, lang='en')
-        temp_dir = tempfile.mkdtemp()
-        audio_path = os.path.join(temp_dir, "voice.mp3")
+if st.button("🎥 Generate Video"):
+    with st.spinner("Generating voiceover..."):
+        tts = gTTS(script)
+        audio_path = f"/tmp/voice_{uuid.uuid4().hex}.mp3"
         tts.save(audio_path)
+        audio_clip = AudioFileClip(audio_path)
+        tts_duration = audio_clip.duration
 
-        st.info("Generating video with captions and background music...")
-        txt_clip = TextClip(script, fontsize=24, color='white', size=(720, 1280 if aspect_ratio == "9:16" else 720), method='caption')
-        txt_clip = txt_clip.set_duration(30).set_position('center').set_fps(24)
+    with st.spinner("Creating caption..."):
+        def generate_text_image(text, width=720, height=100, font_size=30):
+            img = Image.new("RGB", (width, height), color=(0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+            draw.text((10, 10), text, fill="white", font=font)
+            temp_path = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+            img.save(temp_path)
+            return temp_path
 
-        audioclip = AudioFileClip(audio_path).set_duration(30)
-        final = txt_clip.set_audio(audioclip)
+        caption_path = generate_text_image(script)
+        txt_clip = ImageClip(caption_path).set_duration(tts_duration).set_position("bottom")
 
-        output_path = os.path.join(temp_dir, "output_video.mp4")
-        final.write_videofile(output_path, codec='libx264', audio_codec='aac')
+    with st.spinner("Generating AI background..."):
+        # Placeholder background — replace with real AI visuals when added
+        bg_color = (10, 10, 40)
+        bg_size = (1280, 720) if aspect_ratio == "16:9" else (720, 1280)
+        bg = Image.new("RGB", bg_size, color=bg_color)
+        temp_bg = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+        bg.save(temp_bg)
+        background_clip = ImageClip(temp_bg).set_duration(tts_duration)
 
-        st.success("Video generated successfully!")
-        with open(output_path, "rb") as file:
-            st.download_button(label="📥 Download Video", data=file, file_name="fact_pulse_video.mp4", mime="video/mp4")
+    with st.spinner("Adding background music..."):
+        music_path = "music.mp3"
+        if os.path.exists(music_path):
+            music = AudioFileClip(music_path).volumex(0.2)
+            final_audio = audio_clip.audio.set_duration(tts_duration).audio.set_fps(44100).volumex(1.0)
+            combined_audio = music.set_duration(tts_duration).audio.set_fps(44100).volumex(0.2)
+            final_audio = audio_clip.audio.volumex(1.0).fx(lambda c: c.audio_fadeout(0.5))
+        else:
+            final_audio = audio_clip
+
+    with st.spinner("Rendering final video..."):
+        video = CompositeVideoClip([background_clip, txt_clip])
+        video = video.set_audio(final_audio)
+        video_path = f"/tmp/final_video_{uuid.uuid4().hex}.mp4"
+        video.write_videofile(video_path, fps=24)
+
+    st.video(video_path)
+    st.success("✅ Your video is ready!")
