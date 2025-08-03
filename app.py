@@ -37,7 +37,7 @@ if st.button("🎬 Generate Video"):
                 color='white',
                 font='Arial-Bold',
                 size=(720, 1280 if aspect_ratio == "9:16" else 720),
-                method='caption'
+                method='label'  # 👈 this avoids ImageMagick errors
             ).set_position("center").set_duration(word_duration).set_start(current_time)
             txt_clip = txt_clip.margin(bottom=30)
             text_clips.append(txt_clip)
